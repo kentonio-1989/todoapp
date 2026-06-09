@@ -11,13 +11,6 @@ type Todo = {
 
 type Filter = 'all' | 'active' | 'completed';
 
-const INITIAL_TODOS: Todo[] = [
-  { id: 1, text: '牛乳を買う', completed: false },
-  { id: 2, text: '部屋を掃除する', completed: false },
-  { id: 3, text: '運動する', completed: false },
-  { id: 4, text: '本を読む', completed: false },
-];
-
 const FILTER_LABELS: Record<Filter, string> = {
   all: 'すべて',
   active: '進行中',
@@ -27,40 +20,50 @@ const FILTER_LABELS: Record<Filter, string> = {
 export default function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState('');
-  const [loaded, setLoaded] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const [loading, setLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('todos');
-    if (saved) {
-      try { setTodos(JSON.parse(saved)); } catch { /* ignore */ }
-    } else {
-      setTodos(INITIAL_TODOS);
-    }
-    setLoaded(true);
+    fetch('/api/todos')
+      .then(r => r.json())
+      .then(data => { setTodos(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (loaded) localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos, loaded]);
-
-  const addTodo = () => {
+  const addTodo = async () => {
     const text = input.trim();
     if (!text) return;
-    setTodos(prev => [...prev, { id: Date.now(), text, completed: false }]);
     setInput('');
+    const res = await fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const todo = await res.json();
+    setTodos(prev => [...prev, todo]);
     inputRef.current?.focus();
   };
 
-  const toggleTodo = (id: number) =>
-    setTodos(prev => prev.map(t => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  const toggleTodo = async (id: number, completed: boolean) => {
+    setTodos(prev => prev.map(t => (t.id === id ? { ...t, completed } : t)));
+    await fetch(`/api/todos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed }),
+    });
+  };
 
-  const deleteTodo = (id: number) =>
+  const deleteTodo = async (id: number) => {
     setTodos(prev => prev.filter(t => t.id !== id));
+    await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+  };
 
-  const clearCompleted = () =>
+  const clearCompleted = async () => {
+    const completed = todos.filter(t => t.completed);
     setTodos(prev => prev.filter(t => !t.completed));
+    await Promise.all(completed.map(t => fetch(`/api/todos/${t.id}`, { method: 'DELETE' })));
+  };
 
   const completedCount = todos.filter(t => t.completed).length;
   const activeCount = todos.filter(t => !t.completed).length;
@@ -91,11 +94,13 @@ export default function TodoApp() {
             My Tasks
           </h1>
           <p className="mt-2 text-base text-orange-400 font-medium flex items-center justify-center gap-1">
-            {todos.length === 0
-              ? <><span>タスクを追加してね！</span><PawIcon size={18} /></>
-              : activeCount === 0
-                ? 'ぜんぶ完了！やったね 🎉'
-                : `あと ${activeCount} 件、がんばろう！`}
+            {loading
+              ? '読み込み中…'
+              : todos.length === 0
+                ? <><span>タスクを追加してね！</span><PawIcon size={18} /></>
+                : activeCount === 0
+                  ? 'ぜんぶ完了！やったね 🎉'
+                  : `あと ${activeCount} 件、がんばろう！`}
           </p>
         </div>
 
@@ -211,7 +216,7 @@ export default function TodoApp() {
         <p className="text-xs text-orange-300 mb-6 px-2">Enter キーでも追加できます</p>
 
         {/* Empty state */}
-        {filteredTodos.length === 0 && (
+        {!loading && filteredTodos.length === 0 && (
           <div className="flex flex-col items-center py-16 rounded-3xl border-2 border-dashed border-orange-200 bg-white/70">
             <PawIcon size={52} />
             <p className="text-gray-400 text-sm mt-3">
@@ -245,7 +250,7 @@ export default function TodoApp() {
                 }`}
               >
                 <button
-                  onClick={() => toggleTodo(todo.id)}
+                  onClick={() => toggleTodo(todo.id, !todo.completed)}
                   title={todo.completed ? '未完了に戻す' : '完了にする'}
                   className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-75 hover:scale-110 ${
                     todo.completed ? 'bg-green-100' : 'bg-yellow-100'
