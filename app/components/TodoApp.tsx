@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { LionIcon, DogIcon, FrogIcon, WolfIcon, FoxIcon, CatIcon, PawIcon } from './animals';
 
 type Todo = {
   id: number;
   text: string;
   completed: boolean;
 };
+
+type Filter = 'all' | 'active' | 'completed';
 
 const INITIAL_TODOS: Todo[] = [
   { id: 1, text: '牛乳を買う', completed: false },
@@ -15,10 +18,17 @@ const INITIAL_TODOS: Todo[] = [
   { id: 4, text: '本を読む', completed: false },
 ];
 
+const FILTER_LABELS: Record<Filter, string> = {
+  all: 'すべて',
+  active: '進行中',
+  completed: '完了',
+};
+
 export default function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,34 +62,74 @@ export default function TodoApp() {
   const clearCompleted = () =>
     setTodos(prev => prev.filter(t => !t.completed));
 
-  const completed = todos.filter(t => t.completed).length;
-  const remaining = todos.length - completed;
-  const progress = todos.length > 0 ? Math.round((completed / todos.length) * 100) : 0;
+  const completedCount = todos.filter(t => t.completed).length;
+  const activeCount = todos.filter(t => !t.completed).length;
+  const progress = todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
+
+  const filteredTodos = todos.filter(t => {
+    if (filter === 'active') return !t.completed;
+    if (filter === 'completed') return t.completed;
+    return true;
+  });
+
+  const filterCounts: Record<Filter, number> = {
+    all: todos.length,
+    active: activeCount,
+    completed: completedCount,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-orange-50 to-pink-100 flex items-start justify-center pt-12 px-4 pb-16">
       <div className="w-full max-w-md">
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-3 drop-shadow">🦁</div>
+        <div className="text-center mb-6">
+          <div className="mb-3 flex justify-center drop-shadow">
+            <LionIcon size={72} />
+          </div>
           <h1 className="text-4xl font-extrabold text-orange-500 tracking-tight">
             My Tasks
           </h1>
-          <p className="mt-2 text-base text-orange-400 font-medium">
+          <p className="mt-2 text-base text-orange-400 font-medium flex items-center justify-center gap-1">
             {todos.length === 0
-              ? 'タスクを追加してね！🐾'
-              : remaining === 0
+              ? <><span>タスクを追加してね！</span><PawIcon size={18} /></>
+              : activeCount === 0
                 ? 'ぜんぶ完了！やったね 🎉'
-                : `あと ${remaining} 件、がんばろう！`}
+                : `あと ${activeCount} 件、がんばろう！`}
           </p>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-1 mb-5 bg-white rounded-2xl p-1 shadow-sm border border-orange-100">
+          {(['all', 'active', 'completed'] as Filter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                filter === f
+                  ? 'bg-orange-400 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-orange-400'
+              }`}
+            >
+              {FILTER_LABELS[f]}
+              {filterCounts[f] > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                  filter === f ? 'bg-white/30 text-white' : 'bg-orange-100 text-orange-400'
+                }`}>
+                  {filterCounts[f]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Progress bar */}
         {todos.length > 0 && (
           <div className="mb-4 bg-white rounded-2xl p-4 shadow-sm border border-orange-100">
             <div className="flex justify-between items-center text-sm mb-2">
-              <span className="text-gray-500 font-medium">🐾 進捗</span>
+              <span className="text-gray-500 font-medium flex items-center gap-1">
+                <PawIcon size={16} /> 進捗
+              </span>
               <span className="font-bold text-orange-500">{progress}%</span>
             </div>
             <div className="h-3 bg-orange-100 rounded-full overflow-hidden">
@@ -122,11 +172,11 @@ export default function TodoApp() {
             </div>
             <div className="flex divide-x divide-orange-100 border-t border-orange-100 text-center text-xs">
               <div className="flex-1 py-2.5">
-                <div className="font-bold text-green-500">{completed}</div>
+                <div className="font-bold text-green-500">{completedCount}</div>
                 <div className="text-gray-400">完了</div>
               </div>
               <div className="flex-1 py-2.5">
-                <div className="font-bold text-orange-400">{remaining}</div>
+                <div className="font-bold text-orange-400">{activeCount}</div>
                 <div className="text-gray-400">未完了</div>
               </div>
               <div className="flex-1 py-2.5">
@@ -151,26 +201,41 @@ export default function TodoApp() {
           <button
             onClick={addTodo}
             disabled={!input.trim()}
-            className="px-5 py-3 bg-orange-400 text-white rounded-2xl hover:bg-orange-500 active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-orange-200 text-lg font-bold"
+            className="flex items-center gap-2 px-4 py-3 bg-orange-400 text-white rounded-2xl hover:bg-orange-500 active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-orange-200 font-bold"
             title="追加する"
           >
-            🐱 追加
+            <CatIcon size={28} />
+            追加
           </button>
         </div>
         <p className="text-xs text-orange-300 mb-6 px-2">Enter キーでも追加できます</p>
 
         {/* Empty state */}
-        {todos.length === 0 && (
+        {filteredTodos.length === 0 && (
           <div className="flex flex-col items-center py-16 rounded-3xl border-2 border-dashed border-orange-200 bg-white/70">
-            <div className="text-5xl mb-3">🐾</div>
-            <p className="text-gray-400 text-sm">タスクがまだないよ！追加してね</p>
+            <PawIcon size={52} />
+            <p className="text-gray-400 text-sm mt-3">
+              {filter === 'active'
+                ? completedCount > 0 ? '進行中のタスクはないよ！' : 'タスクがまだないよ！追加してね'
+                : filter === 'completed'
+                  ? '完了済みのタスクはないよ！'
+                  : 'タスクがまだないよ！追加してね'}
+            </p>
+            {filter !== 'all' && (
+              <button
+                onClick={() => setFilter('all')}
+                className="mt-3 text-xs text-orange-400 underline"
+              >
+                すべて表示する
+              </button>
+            )}
           </div>
         )}
 
         {/* Todo list */}
-        {todos.length > 0 && (
+        {filteredTodos.length > 0 && (
           <ul className="space-y-3">
-            {todos.map(todo => (
+            {filteredTodos.map(todo => (
               <li
                 key={todo.id}
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 bg-white shadow-sm transition-all duration-200 ${
@@ -179,18 +244,16 @@ export default function TodoApp() {
                     : 'border-orange-100 hover:border-orange-300 hover:shadow-md'
                 }`}
               >
-                {/* Complete toggle button */}
                 <button
                   onClick={() => toggleTodo(todo.id)}
                   title={todo.completed ? '未完了に戻す' : '完了にする'}
-                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-2xl transition-all active:scale-75 hover:scale-110 ${
+                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-75 hover:scale-110 ${
                     todo.completed ? 'bg-green-100' : 'bg-yellow-100'
                   }`}
                 >
-                  {todo.completed ? '🐸' : '🐶'}
+                  {todo.completed ? <FrogIcon size={28} /> : <DogIcon size={28} />}
                 </button>
 
-                {/* Text */}
                 <span
                   className={`flex-1 text-sm font-medium break-all transition-all duration-200 ${
                     todo.completed ? 'line-through text-gray-300' : 'text-gray-700'
@@ -199,37 +262,54 @@ export default function TodoApp() {
                   {todo.text}
                 </span>
 
-                {/* Delete button */}
                 <button
                   onClick={() => deleteTodo(todo.id)}
                   title="削除する"
                   aria-label={`「${todo.text}」を削除`}
-                  className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center text-2xl active:scale-75 hover:scale-110 transition-all"
+                  className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center active:scale-75 hover:scale-110 transition-all"
                 >
-                  🐺
+                  <WolfIcon size={28} />
                 </button>
               </li>
             ))}
           </ul>
         )}
 
-        {/* Clear completed */}
-        {todos.some(t => t.completed) && (
-          <div className="mt-5 flex justify-center">
+        {/* Completed task actions */}
+        {completedCount > 0 && (
+          <div className="mt-5 flex flex-col gap-2 items-center">
+            {filter !== 'active' ? (
+              <button
+                onClick={() => setFilter('active')}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-500 text-sm font-semibold transition-all shadow-sm active:scale-95"
+              >
+                <FrogIcon size={20} />
+                完了タスクを非表示
+              </button>
+            ) : (
+              <button
+                onClick={() => setFilter('all')}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border-2 border-green-200 hover:bg-green-50 text-green-500 text-sm font-semibold transition-all shadow-sm active:scale-95"
+              >
+                <FrogIcon size={20} />
+                完了タスクを表示する（{completedCount}件）
+              </button>
+            )}
             <button
               onClick={clearCompleted}
               className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border-2 border-red-200 hover:bg-red-50 text-red-400 text-sm font-semibold transition-all shadow-sm active:scale-95"
             >
-              🦊 完了済みをすべて削除
+              <FoxIcon size={24} />
+              完了済みをすべて削除
             </button>
           </div>
         )}
 
         {/* Legend */}
         <div className="mt-8 flex justify-center gap-6 text-xs text-gray-400">
-          <span>🐶 → 完了にする</span>
-          <span>🐸 → 元に戻す</span>
-          <span>🐺 → 削除する</span>
+          <span className="flex items-center gap-1"><DogIcon size={18} /> 完了にする</span>
+          <span className="flex items-center gap-1"><FrogIcon size={18} /> 元に戻す</span>
+          <span className="flex items-center gap-1"><WolfIcon size={18} /> 削除する</span>
         </div>
       </div>
     </div>
