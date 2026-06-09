@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(npx tsc *)",
+      "Bash(Test-Path \"C:\\\\Users\\\\横川健\\\\OneDrive - Yamagishi,Inc\\\\kenclaude\\\\todo\\\\CLAUDE.md\")",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell(winget install GitHub.cli --accept-source-agreements --accept-package-agreements)",
+      "PowerShell(gh auth status)"
     ]
   }
 }
